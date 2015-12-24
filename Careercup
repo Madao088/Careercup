@@ -1,0 +1,102 @@
+from selenium import webdriver
+from bs4 import BeautifulSoup
+import re
+import MySQLdb
+class Database:
+	host = "localhost"
+	user = "root"
+	passwd = ""
+	db = "topfifty"
+	
+	def __init__(self):
+		self.connection=MySQLdb.connect	(host=self.host,
+						user=self.user,
+						passwd=self.passwd,
+						db=self.db)
+	def query(self,q):
+		cursor=self.connection.cursor(MySQLdb.cursors.DictCursor)
+		cursor.execute(q)
+		return cursor.fetchall()
+	
+	def __del__(self):
+		self.connection.close()
+	
+	def commit(self):
+		self.connection.commit()
+
+if __name__=="__main__":
+	db=Database()
+	driver=webdriver.Firefox()
+	driver.get("http://www.careercup.com/page?pid=networking-web-internet-interview-questions&sort=comments&n=2")
+	ps=driver.page_source;
+	f=open('career','w')
+	soup=BeautifulSoup(ps,"lxml")
+	ans=soup.findAll("span" , {"class" : "entry"})
+	a=''
+	x=210
+	for ques in ans:
+		x=x+1
+		try:			
+			for ques1 in ques.descendants:
+				question=''
+				answer=''
+				code=''
+				company=''
+				a=ques1.next_sibling
+				a=str(a)
+				a=a.split('=')[2]
+				a=a.split('"')[0]
+				driver.get("http://www.careercup.com/question?id="+a)
+				ps=driver.page_source;
+				soup=BeautifulSoup(ps,"lxml")
+				well=soup.find("span",{"class":"entry"})
+				for well1 in well.descendants:
+					well1=well1.next_sibling
+					question=well1.text
+					question=question.replace("\"","\\\"")
+					question="\""+question+"\""
+					break
+				well=soup.find("span",{"class":"company"})
+				well=str(well)	
+				well=well.split('=')[4]
+				well=well.split('/')[0]
+				company=well
+			
+				try:
+					well=soup.find("div",{"class":"commentBody"})
+					answer=well.text
+					answer=answer.replace("\"","\\\"")
+					answer="\""+answer+"\""	
+				
+				except:
+					answer="\"no answer\""
+				try:
+					well=soup.find("code",{"class":"language-java"})
+					code=well.text
+					code=code.replace("\"","\\\"")
+					code="\""+code+"\""
+				
+				except:
+					code="\"no code\""	
+				print x
+				print question
+				print answer
+				print code
+				print company
+				
+	 			q="""SET NAMES utf8mb4"""
+				db.query(q)
+				db.commit()
+				try:
+					q="""INSERT INTO questions VALUES (%d,%s,%s,1,1,%s,4,1,1,%s)"""%(x,question,answer,code,company) 
+					print q			
+					db.query(q)
+					db.commit()
+				except:
+					print "error"	
+				break
+		except:
+			print "yo"
+		
+	
+       
